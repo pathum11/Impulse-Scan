@@ -1,0 +1,5 @@
+{
+  "name": "Binance Impulse Scanner",
+  "description": "Real-time scanner for Binance Future coins detecting new Elliott Wave impulses on 5M Heikin Ashi charts.",
+  "requestFramePermissions": []
+}
