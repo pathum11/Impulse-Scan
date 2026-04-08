@@ -21,6 +21,11 @@ export interface Pivot {
   time: number;
 }
 
+export interface HistoryEntry {
+  timestamp: number;
+  results: ImpulseResult[];
+}
+
 export interface ImpulseResult {
   symbol: string;
   isImpulse: boolean;
@@ -31,4 +36,5 @@ export interface ImpulseResult {
   pattern: 'IMPULSE' | 'ZIGZAG';
   lastPrice: number;
   change24h: number;
+  detectedAt?: number;
 }
