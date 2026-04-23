@@ -22,12 +22,14 @@ import { motion, AnimatePresence } from 'motion/react';
 import { getFutureSymbols, getKlines, calculateHeikinAshi, detectImpulse } from './services/binanceService';
 import { ImpulseResult, HistoryEntry } from './types';
 import { cn } from './lib/utils';
+import { AR_BANDS_DEFAULT_CONFIG } from './lib/indicatorConfig';
 
 export default function App() {
   const [symbols, setSymbols] = useState<string[]>([]);
   const [results, setResults] = useState<ImpulseResult[]>([]);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [activeTab, setActiveTab] = useState<'CURRENT' | 'HISTORY'>('CURRENT');
+  const [showSettings, setShowSettings] = useState(false);
   const [loading, setLoading] = useState(true);
   const [scanning, setScanning] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -152,6 +154,13 @@ export default function App() {
           </div>
 
           <div className="flex items-center gap-2 md:gap-4">
+            <button
+              onClick={() => setShowSettings(true)}
+              className="p-2 rounded-lg bg-white/5 text-gray-400 hover:text-white transition-colors"
+              title="Indicator Settings"
+            >
+              <Filter size={20} />
+            </button>
             <button 
               onClick={() => scanSymbols(symbols)}
               disabled={scanning || loading}
@@ -643,6 +652,38 @@ export default function App() {
             <div className="w-12 h-12 border-4 border-yellow-500/20 border-t-yellow-500 rounded-full animate-spin" />
             <p className="text-sm font-medium text-gray-400 animate-pulse">Initializing Scanner...</p>
           </div>
+        </div>
+      )}
+
+      {/* Settings Modal */}
+      {showSettings && (
+        <div className="fixed inset-0 bg-black/80 z-[100] flex items-center justify-center p-4">
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-[#111] border border-white/10 rounded-2xl p-6 w-full max-w-lg max-h-[80vh] overflow-y-auto"
+          >
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-bold">AR Bands Settings</h2>
+              <button onClick={() => setShowSettings(false)} className="text-gray-400 hover:text-white">✕</button>
+            </div>
+            
+            <div className="space-y-4">
+              {Object.entries(AR_BANDS_DEFAULT_CONFIG.inputs).map(([key, value]) => (
+                <div key={key} className="flex justify-between items-center">
+                  <span className="text-sm text-gray-400 capitalize">{key.replace(/([A-Z])/g, ' $1')}</span>
+                  <span className="text-white font-mono">{String(value)}</span>
+                </div>
+              ))}
+            </div>
+            
+            <button 
+              onClick={() => setShowSettings(false)}
+              className="mt-8 w-full py-2 bg-yellow-500 text-black font-bold rounded-lg hover:bg-yellow-400"
+            >
+              OK
+            </button>
+          </motion.div>
         </div>
       )}
     </div>

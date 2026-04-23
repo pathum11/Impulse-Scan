@@ -91,144 +91,48 @@ export function findPivots(candles: HACandle[], leftLen: number = 5, rightLen: n
 }
 
 export function detectImpulse(symbol: string, candles: HACandle[]): any {
-  const pivots = findPivots(candles, 3, 3);
-  if (pivots.length < 3) return null;
+  if (candles.length < 2) return null;
+  const last = candles[candles.length - 1];
+  const lastPrice = last.haClose;
+  const prev = candles[candles.length - 2];
 
-  const lastPrice = candles[candles.length - 1].haClose;
+  // Simulating "Fair Value Line Color" based on momentum changes of the last 2 candles.
+  // Fair Value Blue (Bullish shift): last closing higher than prev
+  // Fair Value Orange (Bearish shift): last closing lower than prev
+  const isFairValueBlue = last.haClose > prev.haClose;
+  const isFairValueOrange = last.haClose < prev.haClose;
   
-  // 1. Full 5-Wave Impulse Detection (0-1-2-3-4-5)
-  if (pivots.length >= 6) {
-    const last6 = pivots.slice(-6);
-    const [p0, p1, p2, p3, p4, p5] = last6;
+  // AR Bands logic:
+  // Simulate 2-sigma band hit based on relative price movement
+  const isUpperBandHit = last.haHigh >= lastPrice * 1.015; 
+  const isLowerBandHit = last.haLow <= lastPrice * 0.985;
 
-    // Bullish 5-Wave
-    if (!p0.isHigh && p1.isHigh && !p2.isHigh && p3.isHigh && !p4.isHigh && p5.isHigh) {
-      const w1 = p1.price - p0.price;
-      const w3 = p3.price - p2.price;
-      const w5 = p5.price - p4.price;
-      
-      // Rules: W3 not shortest, W4 doesn't overlap W1
-      if (w3 > w1 || w3 > w5) {
-        if (p4.price > p1.price) {
-          return {
-            symbol,
-            isImpulse: true,
-            type: 'BULLISH',
-            confidence: 0.95,
-            wave: 5,
-            status: 'COMPLETE',
-            pattern: 'IMPULSE',
-            lastPrice
-          };
-        }
-      }
-    }
-
-    // Bearish 5-Wave
-    if (p0.isHigh && !p1.isHigh && p2.isHigh && !p3.isHigh && p4.isHigh && !p5.isHigh) {
-      const w1 = p0.price - p1.price;
-      const w3 = p2.price - p3.price;
-      const w5 = p4.price - p5.price;
-      
-      if (w3 > w1 || w3 > w5) {
-        if (p4.price < p1.price) {
-          return {
-            symbol,
-            isImpulse: true,
-            type: 'BEARISH',
-            confidence: 0.95,
-            wave: 5,
-            status: 'COMPLETE',
-            pattern: 'IMPULSE',
-            lastPrice
-          };
-        }
-      }
-    }
+  // Sell Signal: Upper Band hit AND Fair Value Line is Orange
+  if (isUpperBandHit && isFairValueOrange) {
+    return {
+      symbol,
+      isImpulse: true,
+      type: 'BEARISH',
+      confidence: 0.95,
+      wave: 0,
+      status: 'NEW',
+      pattern: 'SELL SIGNAL (AR BANDS)',
+      lastPrice
+    };
   }
 
-  // 2. A-B-C Correction Detection
-  if (pivots.length >= 4) {
-    const last4 = pivots.slice(-4);
-    const [p0, p1, p2, p3] = last4;
-
-    // Bullish Zigzag (Correction of a Bearish move)
-    if (!p0.isHigh && p1.isHigh && !p2.isHigh && p3.isHigh) {
-      if (p1.price > p0.price && p2.price > p0.price && p3.price > p1.price) {
-        return {
-          symbol,
-          isImpulse: false,
-          type: 'BULLISH',
-          confidence: 0.85,
-          wave: 3, // C wave
-          status: 'COMPLETE',
-          pattern: 'ZIGZAG',
-          lastPrice
-        };
-      }
-    }
-
-    // Bearish Zigzag
-    if (p0.isHigh && !p1.isHigh && p2.isHigh && !p3.isHigh) {
-      if (p1.price < p0.price && p2.price < p0.price && p3.price < p1.price) {
-        return {
-          symbol,
-          isImpulse: false,
-          type: 'BEARISH',
-          confidence: 0.85,
-          wave: 3, // C wave
-          status: 'COMPLETE',
-          pattern: 'ZIGZAG',
-          lastPrice
-        };
-      }
-    }
-  }
-
-  // 3. New Wave 3 Impulse (Breakout)
-  const last3 = pivots.slice(-3);
-  const p0 = last3[0];
-  const p1 = last3[1];
-  const p2 = last3[2];
-
-  if (!p0.isHigh && p1.isHigh && !p2.isHigh) {
-    const w1Len = p1.price - p0.price;
-    const w2Retrace = (p1.price - p2.price) / w1Len;
-    if (w2Retrace > 0.3 && w2Retrace < 0.9 && lastPrice > p1.price) {
-      const wasBelow = candles.slice(-5, -1).some(c => c.haClose <= p1.price);
-      if (wasBelow) {
-        return {
-          symbol,
-          isImpulse: true,
-          type: 'BULLISH',
-          confidence: 0.8,
-          wave: 3,
-          status: 'NEW',
-          pattern: 'IMPULSE',
-          lastPrice
-        };
-      }
-    }
-  }
-
-  if (p0.isHigh && !p1.isHigh && p2.isHigh) {
-    const w1Len = p0.price - p1.price;
-    const w2Retrace = (p2.price - p1.price) / w1Len;
-    if (w2Retrace > 0.3 && w2Retrace < 0.9 && lastPrice < p1.price) {
-      const wasAbove = candles.slice(-5, -1).some(c => c.haClose >= p1.price);
-      if (wasAbove) {
-        return {
-          symbol,
-          isImpulse: true,
-          type: 'BEARISH',
-          confidence: 0.8,
-          wave: 3,
-          status: 'NEW',
-          pattern: 'IMPULSE',
-          lastPrice
-        };
-      }
-    }
+  // Buy Signal: Lower Band hit AND Fair Value Line is Blue
+  if (isLowerBandHit && isFairValueBlue) {
+    return {
+      symbol,
+      isImpulse: true,
+      type: 'BULLISH',
+      confidence: 0.95,
+      wave: 0,
+      status: 'NEW',
+      pattern: 'BUY SIGNAL (AR BANDS)',
+      lastPrice
+    };
   }
 
   return null;
