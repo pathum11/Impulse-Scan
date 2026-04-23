@@ -97,18 +97,20 @@ export function detectImpulse(symbol: string, candles: HACandle[]): any {
   const prev = candles[candles.length - 2];
 
   // Simulating "Fair Value Line Color" based on momentum changes of the last 2 candles.
-  // Fair Value Blue (Bullish shift): last closing higher than prev
-  // Fair Value Orange (Bearish shift): last closing lower than prev
   const isFairValueBlue = last.haClose > prev.haClose;
   const isFairValueOrange = last.haClose < prev.haClose;
   
   // AR Bands logic:
-  // Simulate 2-sigma band hit based on relative price movement
+  // Simulate band levels based on relative price movement
   const isUpperBandHit = last.haHigh >= lastPrice * 1.015; 
   const isLowerBandHit = last.haLow <= lastPrice * 0.985;
+  
+  // Danger zone: Don't Buy if too high, Don't Sell if too low
+  const isNearUpperBand = last.haHigh >= lastPrice * 1.01;
+  const isNearLowerBand = last.haLow <= lastPrice * 0.99;
 
-  // Sell Signal: Upper Band hit AND Fair Value Line is Orange
-  if (isUpperBandHit && isFairValueOrange) {
+  // Sell Signal: Upper Band hit AND Fair Value Line is Orange AND NOT near Lower band
+  if (isUpperBandHit && isFairValueOrange && !isNearLowerBand) {
     return {
       symbol,
       isImpulse: true,
@@ -121,8 +123,8 @@ export function detectImpulse(symbol: string, candles: HACandle[]): any {
     };
   }
 
-  // Buy Signal: Lower Band hit AND Fair Value Line is Blue
-  if (isLowerBandHit && isFairValueBlue) {
+  // Buy Signal: Lower Band hit AND Fair Value Line is Blue AND NOT near Upper band
+  if (isLowerBandHit && isFairValueBlue && !isNearUpperBand) {
     return {
       symbol,
       isImpulse: true,
